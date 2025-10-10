@@ -1,0 +1,14 @@
+# Node.js
+node_modules
+npm-debug.log
+
+# NestJS
+.nest
+dist
+
+# State files
+*.state.json
+
+# Screenshots
+*.png
+.env
