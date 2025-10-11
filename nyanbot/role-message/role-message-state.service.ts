@@ -1,84 +1,85 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { promises as fs } from 'fs';
-import * as path from 'path';
-
-export interface PostedRoleMessage {
-  configId: string; // Which config generated this message
-  guildId: string;
-  channelId: string;
-  messageId: string; // The ID of the message on Discord
-  postedAt: Date;
-}
-
-interface RoleMessageState {
-  postedMessages: Map<string, PostedRoleMessage>; // Key: messageId
-}
+import { SwarmService } from '../swarm/swarm.service';
+import { PostedRoleMessage } from './interfaces/role-message.interface';
 
 @Injectable()
 export class RoleMessageStateService implements OnModuleInit {
   private readonly logger = new Logger(RoleMessageStateService.name);
-  private readonly _state = new BehaviorSubject<RoleMessageState>({ postedMessages: new Map() });
-  public readonly state$: Observable<RoleMessageState> = this._state.asObservable();
-  private readonly stateFilePath = path.join(process.cwd(), 'role-messages.state.json');
-  private saveQueue = Promise.resolve();
 
-  async onModuleInit() {
-    await this.loadState();
-  }
+  constructor(private readonly swarmService: SwarmService) {}
 
-  private async loadState() {
-    try {
-      const data = await fs.readFile(this.stateFilePath, 'utf-8');
-      const parsed = JSON.parse(data);
-      // JSON dates are strings, so we need to convert them back to Date objects
-      const postedMessages = new Map<string, PostedRoleMessage>(
-        parsed.postedMessages.map(([key, value]: [string, PostedRoleMessage]) => [key, { ...value, postedAt: new Date(value.postedAt) }]),
-      );
-      this._state.next({ postedMessages });
-      this.logger.log(`Loaded ${postedMessages.size} posted role messages from state file.`);
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        this.logger.log('State file not found. Starting with a clean state.');
-      } else {
-        this.logger.error('Failed to load state from file.', error);
-      }
-    }
-  }
-
-  private saveState() {
-    this.saveQueue = this.saveQueue.then(async () => {
-      const state = this._state.getValue();
-      const dataToSave = {
-        postedMessages: Array.from(state.postedMessages.entries()),
-      };
-      try {
-        await fs.writeFile(this.stateFilePath, JSON.stringify(dataToSave, null, 2), 'utf-8');
-        this.logger.debug('Saved role message state to file.');
-      } catch (error) {
-        this.logger.error('Failed to save state to file.', error);
-      }
-    }).catch(error => {
-        this.logger.error('Error in save queue execution.', error);
-    });
+  onModuleInit() {
+    // Initialize with persistence nanite
+    this.logger.log(
+      'RoleMessageStateService initialized with PersistenceNanite',
+    );
   }
 
   addPostedMessage(message: PostedRoleMessage) {
-    const currentState = this._state.getValue();
-    const newPostedMessages = new Map(currentState.postedMessages);
-    newPostedMessages.set(message.messageId, message);
-    this._state.next({ ...currentState, postedMessages: newPostedMessages });
-    this.logger.debug(`Added posted message: ${message.configId} (ID: ${message.messageId})`);
-    this.saveState();
+    // Get current messages
+    let currentMessages: Record<string, PostedRoleMessage> = {};
+    try {
+      currentMessages =
+        this.swarmService.executeQuery<Record<string, PostedRoleMessage>>(
+          'persistence:getState',
+          'roleMessages',
+        ) || {};
+    } catch {
+      // If no state exists, start with empty object
+      this.logger.debug(
+        'No existing role messages state found, starting fresh',
+      );
+    }
+
+    // Add new message
+    const updatedMessages = {
+      ...currentMessages,
+      [message.messageId]: message,
+    };
+
+    // Save updated state
+    this.swarmService.dispatch({
+      type: 'persistence:saveState',
+      payload: {
+        key: 'roleMessages',
+        data: updatedMessages,
+      },
+    });
+
+    this.logger.debug(
+      `Added posted message: ${message.configId} (ID: ${message.messageId})`,
+    );
   }
 
-  getPostedMessageByMessageId(messageId: string): PostedRoleMessage | undefined {
-    return this._state.getValue().postedMessages.get(messageId);
+  getPostedMessageByMessageId(
+    messageId: string,
+  ): PostedRoleMessage | undefined {
+    try {
+      const messages =
+        this.swarmService.executeQuery<Record<string, PostedRoleMessage>>(
+          'persistence:getState',
+          'roleMessages',
+        ) || {};
+      return messages[messageId];
+    } catch (error) {
+      this.logger.error(
+        `Failed to get posted message by ID ${messageId}`,
+        error as Error,
+      );
+      return undefined;
+    }
   }
 
   clearState() {
-    this._state.next({ postedMessages: new Map() });
-    this.saveState(); // queue up a save
+    // Save empty state
+    this.swarmService.dispatch({
+      type: 'persistence:saveState',
+      payload: {
+        key: 'roleMessages',
+        data: {},
+      },
+    });
+
     this.logger.log('Cleared role message state.');
   }
 }

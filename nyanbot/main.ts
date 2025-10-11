@@ -10,4 +10,4 @@ async function bootstrap() {
     logger: ['log', 'warn', 'error'],
   });
 }
-bootstrap();
+void bootstrap();

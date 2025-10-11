@@ -12,6 +12,7 @@ export default tseslint.config(
   ...tseslint.configs.recommendedTypeChecked,
   eslintPluginPrettierRecommended,
   {
+    files: ['nyanbot/**/*.ts'],
     languageOptions: {
       globals: {
         ...globals.node,

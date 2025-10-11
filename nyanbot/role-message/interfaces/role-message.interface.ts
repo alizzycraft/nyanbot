@@ -10,3 +10,11 @@ export interface RoleMessageConfig {
     value: string;
   }[];
 }
+
+export interface PostedRoleMessage {
+  configId: string; // Which config generated this message
+  guildId: string;
+  channelId: string;
+  messageId: string; // The ID of the message on Discord
+  postedAt: Date;
+}
