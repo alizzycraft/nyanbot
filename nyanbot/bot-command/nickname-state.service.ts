@@ -46,7 +46,9 @@ export class NicknameStateService implements OnModuleInit {
   updatePronoun(userId: string, pronoun: string | undefined) {
     try {
       this.logger.log(`Updating pronoun for user ${userId} to ${pronoun}`);
+      this.logger.log(`Getting current nickname parts for user ${userId}`);
       const currentParts = this.getNicknameParts(userId) || {};
+      this.logger.log(`Current parts for user ${userId}: ${JSON.stringify(currentParts)}`);
       const newParts = { ...currentParts, pronoun };
       this.logger.log(`New parts for user ${userId}: ${JSON.stringify(newParts)}`);
 
@@ -68,7 +70,9 @@ export class NicknameStateService implements OnModuleInit {
   updatePolitics(userId: string, politics: string | undefined) {
     try {
       this.logger.log(`Updating politics for user ${userId} to ${politics}`);
+      this.logger.log(`Getting current nickname parts for user ${userId}`);
       const currentParts = this.getNicknameParts(userId) || {};
+      this.logger.log(`Current parts for user ${userId}: ${JSON.stringify(currentParts)}`);
       const newParts = { ...currentParts, politics };
       this.logger.log(`New parts for user ${userId}: ${JSON.stringify(newParts)}`);
 

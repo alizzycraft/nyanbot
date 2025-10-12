@@ -5,7 +5,7 @@ export const roleMessageConfigs: RoleMessageConfig[] = [
     id: 'pronoun-roles',
     channel: 'roles',
     content:
-      'React to have your pronouns added to your nickname. You can pick multiple!\n\n' +
+      'React to have your pronouns added to your nickname. You can only pick one!\n\n' +
       '💙 - He/Him\n' +
       '💖 - She/Her\n' +
       '💚 - They/Them\n' +

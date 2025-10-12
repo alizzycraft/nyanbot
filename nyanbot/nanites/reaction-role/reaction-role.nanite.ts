@@ -159,6 +159,12 @@ export class ReactionRoleNanite {
   ) {
     this.logger.log(`handleAssignRole called for user ${user.tag} with value ${roleMapping.value}`);
     
+    // Only proceed with role assignment if the action type is ASSIGN_ROLE or BOTH
+    if (roleMapping.action.type !== 'ASSIGN_ROLE' && roleMapping.action.type !== 'BOTH') {
+      this.logger.log(`Skipping role assignment for ${roleMapping.value} because action type is ${roleMapping.action.type}`);
+      return;
+    }
+    
     // Get the guild member
     const guild = reaction.message.guild;
     if (!guild) {
@@ -170,24 +176,60 @@ export class ReactionRoleNanite {
     const member = await guild.members.fetch(user.id);
     this.logger.log(`Fetched member ${member.user.tag}`);
     
-    this.logger.log(`Looking for role with name '${roleMapping.value}' (case-insensitive)`);
+    // Map abbreviations to full role names for political roles
+    const roleAbbreviationToFullName: Record<string, string> = {
+      'L': 'Left',
+      'CL': 'Center-Left',
+      'C': 'Center',
+      'CR': 'Center-Right',
+      'R': 'Right'
+    };
+    
+    // Get the full role name, or use the value directly if not in the mapping (for pronouns)
+    const fullRoleName = roleAbbreviationToFullName[roleMapping.value] || roleMapping.value;
+    this.logger.log(`Looking for role with full name '${fullRoleName}' (case-insensitive) for value '${roleMapping.value}'`);
+    
     // Check if role exists by name (case-insensitive)
     const role = guild.roles.cache.find(
-      r => r.name.toLowerCase() === roleMapping.value.toLowerCase()
+      r => r.name.toLowerCase() === fullRoleName.toLowerCase()
     );
     
     if (role) {
       this.logger.log(`Found existing role: ${role.name} (${role.id})`);
     } else {
-      this.logger.log(`Role ${roleMapping.value} not found, will create it`);
+      this.logger.log(`Role ${fullRoleName} not found, will create it`);
+    }
+
+    // If this is a political role, remove any other political roles the user might have
+    if (roleAbbreviationToFullName[roleMapping.value]) {
+      this.logger.log(`This is a political role, removing other political roles for user ${user.tag}`);
+      const politicalRoleNames = Object.values(roleAbbreviationToFullName);
+      
+      // Get all political roles in the guild
+      const politicalRoles = guild.roles.cache.filter(role => 
+        politicalRoleNames.some(name => role.name.toLowerCase() === name.toLowerCase())
+      );
+      
+      // Remove any political roles the user currently has
+      for (const [roleId, politicalRole] of politicalRoles) {
+        if (member.roles.cache.has(roleId)) {
+          try {
+            this.logger.log(`Removing existing political role ${politicalRole.name} from ${user.tag}`);
+            await member.roles.remove(roleId);
+            this.logger.log(`Removed political role ${politicalRole.name} from ${user.tag}`);
+          } catch (error) {
+            this.logger.error(`Failed to remove political role ${politicalRole.name} from ${user.tag}`, error);
+          }
+        }
+      }
     }
 
     // If role doesn't exist, create it
     if (!role) {
       try {
-        this.logger.log(`Creating new role: ${roleMapping.value}`);
+        this.logger.log(`Creating new role: ${fullRoleName}`);
         const newRole = await guild.roles.create({
-          name: roleMapping.value,
+          name: fullRoleName,
           reason: `Auto-created role for reaction role system`,
         });
         this.logger.log(`Created new role: ${newRole.name} (${newRole.id})`);
@@ -197,23 +239,12 @@ export class ReactionRoleNanite {
         await member.roles.add(newRole.id);
         this.logger.log(`Added role ${newRole.name} to ${user.tag}`);
       } catch (error) {
-        this.logger.error(`Failed to create role ${roleMapping.value}`, error);
-        // Try to add role by name in case it was created by someone else
-        const existingRole = guild.roles.cache.find(
-          r => r.name.toLowerCase() === roleMapping.value.toLowerCase()
-        );
-        if (existingRole) {
-          try {
-            this.logger.log(`Adding existing role ${existingRole.name} to ${user.tag}`);
-            await member.roles.add(existingRole.id);
-            this.logger.log(`Added role ${existingRole.name} to ${user.tag}`);
-          } catch (addError) {
-            this.logger.error('Failed to add role after creation attempt', addError);
-          }
-        }
+        this.logger.error(`Failed to create role ${fullRoleName}`, error);
         return;
       }
-    } else {
+    } 
+    // If role exists, add it
+    else {
       // Add the existing role
       try {
         this.logger.log(`Adding existing role ${role.name} (${role.id}) to ${user.tag} (${member.id})`);
@@ -236,6 +267,12 @@ export class ReactionRoleNanite {
   ) {
     this.logger.log(`handleUnassignRole called for user ${user.tag} with value ${roleMapping.value}`);
     
+    // Only proceed with role unassignment if the action type is ASSIGN_ROLE or BOTH
+    if (roleMapping.action.type !== 'ASSIGN_ROLE' && roleMapping.action.type !== 'BOTH') {
+      this.logger.log(`Skipping role unassignment for ${roleMapping.value} because action type is ${roleMapping.action.type}`);
+      return;
+    }
+    
     // Get the guild member
     const guild = reaction.message.guild;
     if (!guild) {
@@ -245,20 +282,33 @@ export class ReactionRoleNanite {
     const member = await guild.members.fetch(user.id);
     this.logger.log(`Fetched member ${member.user.tag}`);
 
+    // Map abbreviations to full role names for political roles
+    const roleAbbreviationToFullName: Record<string, string> = {
+      'L': 'Left',
+      'CL': 'Center-Left',
+      'C': 'Center',
+      'CR': 'Center-Right',
+      'R': 'Right'
+    };
+    
+    // Get the full role name, or use the value directly if not in the mapping (for pronouns)
+    const fullRoleName = roleAbbreviationToFullName[roleMapping.value] || roleMapping.value;
+    this.logger.log(`Looking for role with full name '${fullRoleName}' (case-insensitive) for value '${roleMapping.value}'`);
+
     // Check if role exists by name (case-insensitive)
     const role = guild.roles.cache.find(
-      r => r.name.toLowerCase() === roleMapping.value.toLowerCase()
+      r => r.name.toLowerCase() === fullRoleName.toLowerCase()
     );
 
     if (role) {
       this.logger.log(`Found existing role: ${role.name} (${role.id})`);
     } else {
-      this.logger.log(`Role ${roleMapping.value} not found`);
+      this.logger.log(`Role ${fullRoleName} not found`);
     }
 
     // If role doesn't exist, log and return
     if (!role) {
-      this.logger.warn(`Role ${roleMapping.value} not found for removal`);
+      this.logger.warn(`Role ${fullRoleName} not found for removal`);
       return;
     }
 
@@ -304,7 +354,7 @@ export class ReactionRoleNanite {
 
     // Add a small delay to ensure the state is saved before reading it
     this.logger.log(`Waiting for state to be saved before reading...`);
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 500));
     this.logger.log(`Done waiting for state to be saved.`);
 
     // Get current nickname parts
@@ -315,12 +365,15 @@ export class ReactionRoleNanite {
     // Build the nickname suffix in the format "(pronouns)[politics]"
     let nicknameSuffix = '';
     if (nicknameParts.pronoun || nicknameParts.politics) {
-      nicknameSuffix = ' (';
-      if (nicknameParts.pronoun) {
-        nicknameSuffix += nicknameParts.pronoun;
-      }
-      nicknameSuffix += ')';
+      // Add a space before the suffixes
+      nicknameSuffix = ' ';
       
+      // Only add parentheses if there are pronouns
+      if (nicknameParts.pronoun) {
+        nicknameSuffix += '(' + nicknameParts.pronoun + ')';
+      }
+      
+      // Add politics in brackets if present
       if (nicknameParts.politics) {
         nicknameSuffix += '[' + nicknameParts.politics + ']';
       }
@@ -373,7 +426,7 @@ export class ReactionRoleNanite {
 
     // Add a small delay to ensure the state is saved before reading it
     this.logger.log(`Waiting for state to be saved before reading...`);
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 500));
     this.logger.log(`Done waiting for state to be saved.`);
 
     // Get current nickname parts
@@ -384,12 +437,15 @@ export class ReactionRoleNanite {
     // Build the nickname suffix in the format "(pronouns)[politics]"
     let nicknameSuffix = '';
     if (nicknameParts.pronoun || nicknameParts.politics) {
-      nicknameSuffix = ' (';
-      if (nicknameParts.pronoun) {
-        nicknameSuffix += nicknameParts.pronoun;
-      }
-      nicknameSuffix += ')';
+      // Add a space before the suffixes
+      nicknameSuffix = ' ';
       
+      // Only add parentheses if there are pronouns
+      if (nicknameParts.pronoun) {
+        nicknameSuffix += '(' + nicknameParts.pronoun + ')';
+      }
+      
+      // Add politics in brackets if present
       if (nicknameParts.politics) {
         nicknameSuffix += '[' + nicknameParts.politics + ']';
       }

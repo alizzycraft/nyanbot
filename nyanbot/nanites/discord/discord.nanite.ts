@@ -201,11 +201,23 @@ export class DiscordNanite implements OnModuleInit {
       // Get the user's base display name
       const baseDisplayName = member.user.displayName;
       this.logger.log(`Base display name for ${member.user.tag}: '${baseDisplayName}'`);
+      this.logger.log(`Username for ${member.user.tag}: '${member.user.username}'`);
+      this.logger.log(`Current nickname for ${member.user.tag}: '${member.nickname || '(default)'}'`);
 
       // If suffix is empty, reset to default nickname
       if (!nicknameSuffix) {
         this.logger.log(
           `Resetting nickname for ${member.user.tag} to default`,
+        );
+        // Check if already at default
+        if (!member.nickname) {
+          this.logger.log(
+            `Nickname for ${member.user.tag} is already default, no change needed`,
+          );
+          return;
+        }
+        this.logger.log(
+          `Current nickname: '${member.nickname}', Resetting to default (empty)`,
         );
         await member.setNickname('');
         this.logger.log(
@@ -235,10 +247,29 @@ export class DiscordNanite implements OnModuleInit {
       this.logger.log(
         `Setting nickname for ${member.user.tag} to '${finalNickname}'`,
       );
+
+      // Check if the nickname is actually changing
+      const currentNickname = member.nickname || '';
+      if (currentNickname === finalNickname) {
+        this.logger.log(
+          `Nickname for ${member.user.tag} is already '${finalNickname}', no change needed`,
+        );
+        return;
+      }
+      
+      this.logger.log(
+        `Current nickname: '${currentNickname}', New nickname: '${finalNickname}'`,
+      );
+
+      this.logger.log(
+        `Setting nickname for ${member.user.tag} to '${finalNickname}'`,
+      );
+      
       await member.setNickname(finalNickname);
       this.logger.log(
         `Set nickname for ${member.user.tag} to '${finalNickname}'`,
       );
+
     } catch (error) {
       this.logger.error(
         `Failed to set nickname for user ${userId}`,
@@ -246,6 +277,11 @@ export class DiscordNanite implements OnModuleInit {
       );
       this.logger.error(
         `Error details: ${JSON.stringify(error)}`,
+      );
+      
+      // Log additional context
+      this.logger.error(
+        `User: ${userId}, Guild: ${guildId}, Suffix: '${nicknameSuffix}'`,
       );
     }
   }
