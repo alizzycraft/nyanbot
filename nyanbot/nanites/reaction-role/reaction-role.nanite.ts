@@ -268,7 +268,8 @@ export class ReactionRoleNanite {
       await member.roles.remove(role.id);
       this.logger.log(`Removed role ${role.name} from ${user.tag}`);
     } catch (error) {
-      this.logger.error('Failed to remove role', error);
+      this.logger.error(`Failed to remove role ${role.name} from ${user.tag}`, error);
+      this.logger.error(`Error details: ${JSON.stringify(error)}`);
     }
   }
 
@@ -311,13 +312,18 @@ export class ReactionRoleNanite {
     const nicknameParts = this.nicknameStateService.getNicknameParts(user.id) || {};
     this.logger.log(`Current nickname parts: ${JSON.stringify(nicknameParts)}`);
     
-    // Build the nickname suffix
+    // Build the nickname suffix in the format "(pronouns)[politics]"
     let nicknameSuffix = '';
-    if (nicknameParts.pronoun) {
-      nicknameSuffix += ` | ${nicknameParts.pronoun}`;
-    }
-    if (nicknameParts.politics) {
-      nicknameSuffix += ` | ${nicknameParts.politics}`;
+    if (nicknameParts.pronoun || nicknameParts.politics) {
+      nicknameSuffix = ' (';
+      if (nicknameParts.pronoun) {
+        nicknameSuffix += nicknameParts.pronoun;
+      }
+      nicknameSuffix += ')';
+      
+      if (nicknameParts.politics) {
+        nicknameSuffix += '[' + nicknameParts.politics + ']';
+      }
     }
 
     this.logger.log(`Built nickname suffix: '${nicknameSuffix}'`);
@@ -366,20 +372,27 @@ export class ReactionRoleNanite {
     }
 
     // Add a small delay to ensure the state is saved before reading it
+    this.logger.log(`Waiting for state to be saved before reading...`);
     await new Promise(resolve => setTimeout(resolve, 100));
+    this.logger.log(`Done waiting for state to be saved.`);
 
     // Get current nickname parts
     this.logger.log(`Getting nickname parts for user ${user.id}`);
     const nicknameParts = this.nicknameStateService.getNicknameParts(user.id) || {};
     this.logger.log(`Current nickname parts after removal: ${JSON.stringify(nicknameParts)}`);
     
-    // Build the nickname suffix
+    // Build the nickname suffix in the format "(pronouns)[politics]"
     let nicknameSuffix = '';
-    if (nicknameParts.pronoun) {
-      nicknameSuffix += ` | ${nicknameParts.pronoun}`;
-    }
-    if (nicknameParts.politics) {
-      nicknameSuffix += ` | ${nicknameParts.politics}`;
+    if (nicknameParts.pronoun || nicknameParts.politics) {
+      nicknameSuffix = ' (';
+      if (nicknameParts.pronoun) {
+        nicknameSuffix += nicknameParts.pronoun;
+      }
+      nicknameSuffix += ')';
+      
+      if (nicknameParts.politics) {
+        nicknameSuffix += '[' + nicknameParts.politics + ']';
+      }
     }
 
     this.logger.log(`Built nickname suffix after removal: '${nicknameSuffix}'`);

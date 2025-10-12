@@ -214,7 +214,7 @@ export class DiscordNanite implements OnModuleInit {
         return;
       }
 
-      // Construct the full nickname
+      // Construct the full nickname by appending the suffix to the base display name
       let finalNickname = baseDisplayName + nicknameSuffix;
       this.logger.log(`Constructed nickname: '${finalNickname}'`);
 
