@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { SwarmService } from '../swarm/swarm.service';
+import { SwarmService } from '../../swarm/swarm.service';
 
 interface NicknameParts {
   pronoun?: string;

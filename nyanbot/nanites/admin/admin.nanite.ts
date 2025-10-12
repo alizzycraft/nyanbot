@@ -8,7 +8,7 @@ import {
 } from '../discord/discord.interface';
 import { isAdminPostRolesCommand } from './admin.interface';
 import type { ConfigType } from '@nestjs/config';
-import { channelConfig } from '../../discord/channel.config';
+import { channelConfig } from '../discord/channel.config';
 import { RoleMessageStateService } from '../../colonies/reaction-role/role-message-state.service';
 import { Guild } from 'discord.js';
 import { DiscordNanite } from '../discord/discord.nanite';

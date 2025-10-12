@@ -9,7 +9,7 @@ import { PersistenceNaniteModule } from './nanites/persistence/persistence.modul
 import { AdminNaniteModule } from './nanites/admin/admin.module';
 import { ReactionRoleColonyModule } from './colonies/reaction-role/reaction-role.module';
 // Import the modules that still contain services we haven't refactored yet
-import { BotCommandModule } from './bot-command/bot-command.module';
+import { BotCommandModule } from './nanites/discord/bot-command.module';
 
 @Module({
   imports: [

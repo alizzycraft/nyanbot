@@ -18,10 +18,10 @@ import {
   PartialUser,
   Message,
 } from 'discord.js';
-import { NicknameStateService } from '../../bot-command/nickname-state.service';
+import { NicknameStateService } from '../../nanites/discord/nickname-state.service';
 import { RoleMessageStateService } from './role-message-state.service';
 import type { ConfigType } from '@nestjs/config';
-import { channelConfig } from '../../discord/channel.config';
+import { channelConfig } from '../../nanites/discord/channel.config';
 import { PostedRoleMessage } from './interfaces/role-message.interface';
 import { Command } from '../../swarm/interfaces/command.interface';
 
