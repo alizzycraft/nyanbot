@@ -10,14 +10,11 @@ export const roleMessageConfigs: RoleMessageConfig[] = [
       '💖 - She/Her\n' +
       '💚 - They/Them\n' +
       '💜 - Any/All',
-    action: {
-      type: 'UPDATE_NICKNAME',
-    },
     reactions: [
-      { emoji: '💙', value: 'He/Him' },
-      { emoji: '💖', value: 'She/Her' },
-      { emoji: '💚', value: 'They/Them' },
-      { emoji: '💜', value: 'Any/All' },
+      { emoji: '💙', value: 'He/Him', action: { type: 'UPDATE_NICKNAME' } },
+      { emoji: '💖', value: 'She/Her', action: { type: 'UPDATE_NICKNAME' } },
+      { emoji: '💚', value: 'They/Them', action: { type: 'UPDATE_NICKNAME' } },
+      { emoji: '💜', value: 'Any/All', action: { type: 'UPDATE_NICKNAME' } },
     ],
   },
   {
@@ -25,20 +22,17 @@ export const roleMessageConfigs: RoleMessageConfig[] = [
     channel: 'roles',
     content:
       'Choose a role to identify your general political alignment.\n\n' +
-      '🟥 - L\n' +
-      '🟧 - CL\n' +
-      '🟨 - C\n' +
-      '🟩 - CR\n' +
-      '🟦 - R',
-    action: {
-      type: 'UPDATE_NICKNAME',
-    },
+      '🟥 - Left\n' +
+      '🟧 - Center-Left\n' +
+      '🟨 - Center\n' +
+      '🟩 - Center-Right\n' +
+      '🟦 - Right',
     reactions: [
-      { emoji: '🟥', value: 'L' },
-      { emoji: '🟧', value: 'CL' },
-      { emoji: '🟨', value: 'C' },
-      { emoji: '🟩', value: 'CR' },
-      { emoji: '🟦', value: 'R' },
+      { emoji: '🟥', value: 'L', action: { type: 'BOTH' } },
+      { emoji: '🟧', value: 'CL', action: { type: 'BOTH' } },
+      { emoji: '🟨', value: 'C', action: { type: 'BOTH' } },
+      { emoji: '🟩', value: 'CR', action: { type: 'BOTH' } },
+      { emoji: '🟦', value: 'R', action: { type: 'BOTH' } },
     ],
   },
 ];

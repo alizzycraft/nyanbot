@@ -7,7 +7,12 @@ import { BotCommandModule } from '../../bot-command/bot-command.module';
 import { DiscordNaniteModule } from '../discord/discord.module';
 
 @Module({
-  imports: [SwarmModule, RoleMessageModule, BotCommandModule, DiscordNaniteModule],
+  imports: [
+    SwarmModule,
+    RoleMessageModule,
+    BotCommandModule,
+    DiscordNaniteModule,
+  ],
   providers: [
     ReactionRoleNanite,
     {

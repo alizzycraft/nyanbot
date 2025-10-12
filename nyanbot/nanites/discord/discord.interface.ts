@@ -6,6 +6,8 @@ export const DISCORD_NANITE_COMMAND_SET_NICKNAME = 'discord:setNickname';
 export const DISCORD_NANITE_EVENT_MESSAGE_CREATE = 'discord:messageCreate';
 export const DISCORD_NANITE_EVENT_MESSAGE_REACTION_ADD =
   'discord:messageReactionAdd';
+export const DISCORD_NANITE_EVENT_MESSAGE_REACTION_REMOVE =
+  'discord:messageReactionRemove';
 
 // --- Commands ---
 
@@ -48,3 +50,12 @@ export const isDiscordMessageReactionAddCommand = (
   command: Command,
 ): command is DiscordMessageReactionAddCommand =>
   command.type === DISCORD_NANITE_EVENT_MESSAGE_REACTION_ADD;
+
+export type DiscordMessageReactionRemoveCommand = Command<{
+  reaction: MessageReaction;
+  user: User;
+}>;
+export const isDiscordMessageReactionRemoveCommand = (
+  command: Command,
+): command is DiscordMessageReactionRemoveCommand =>
+  command.type === DISCORD_NANITE_EVENT_MESSAGE_REACTION_REMOVE;

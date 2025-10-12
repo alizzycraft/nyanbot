@@ -26,10 +26,14 @@ export class NicknameStateService implements OnModuleInit {
 
   getNicknameParts(userId: string): NicknameParts | undefined {
     try {
-      return this.swarmService.executeQuery<NicknameParts | undefined>(
+      this.logger.log(`Getting nickname parts for user ${userId}`);
+      this.logger.log(`Executing query with key 'nickname:${userId}'`);
+      const result = this.swarmService.executeQuery<NicknameParts | undefined>(
         'persistence:getState',
         `nickname:${userId}`,
       );
+      this.logger.log(`Retrieved nickname parts for user ${userId}: ${JSON.stringify(result)}`);
+      return result;
     } catch (error) {
       this.logger.error(
         `Failed to get nickname parts for user ${userId}`,
@@ -41,10 +45,13 @@ export class NicknameStateService implements OnModuleInit {
 
   updatePronoun(userId: string, pronoun: string | undefined) {
     try {
+      this.logger.log(`Updating pronoun for user ${userId} to ${pronoun}`);
       const currentParts = this.getNicknameParts(userId) || {};
       const newParts = { ...currentParts, pronoun };
+      this.logger.log(`New parts for user ${userId}: ${JSON.stringify(newParts)}`);
 
       // Dispatch save command to persistence nanite
+      this.logger.log(`Dispatching save command for user ${userId} with key 'nickname:${userId}'`);
       this.swarmService.dispatch({
         type: 'persistence:saveState',
         payload: {
@@ -52,6 +59,7 @@ export class NicknameStateService implements OnModuleInit {
           data: newParts,
         },
       });
+      this.logger.log(`Dispatched save command for user ${userId}`);
     } catch (error) {
       this.logger.error(`Failed to update pronoun for user ${userId}`, error);
     }
@@ -59,10 +67,13 @@ export class NicknameStateService implements OnModuleInit {
 
   updatePolitics(userId: string, politics: string | undefined) {
     try {
+      this.logger.log(`Updating politics for user ${userId} to ${politics}`);
       const currentParts = this.getNicknameParts(userId) || {};
       const newParts = { ...currentParts, politics };
+      this.logger.log(`New parts for user ${userId}: ${JSON.stringify(newParts)}`);
 
       // Dispatch save command to persistence nanite
+      this.logger.log(`Dispatching save command for user ${userId} with key 'nickname:${userId}'`);
       this.swarmService.dispatch({
         type: 'persistence:saveState',
         payload: {
@@ -70,6 +81,7 @@ export class NicknameStateService implements OnModuleInit {
           data: newParts,
         },
       });
+      this.logger.log(`Dispatched save command for user ${userId}`);
     } catch (error) {
       this.logger.error(`Failed to update politics for user ${userId}`, error);
     }
