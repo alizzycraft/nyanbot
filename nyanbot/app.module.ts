@@ -7,9 +7,8 @@ import { DiscordNaniteModule } from './nanites/discord/discord.module';
 import { LoggerNaniteModule } from './nanites/logger/logger.module';
 import { PersistenceNaniteModule } from './nanites/persistence/persistence.module';
 import { AdminNaniteModule } from './nanites/admin/admin.module';
-import { ReactionRoleNaniteModule } from './nanites/reaction-role/reaction-role.module';
+import { ReactionRoleColonyModule } from './colonies/reaction-role/reaction-role.module';
 // Import the modules that still contain services we haven't refactored yet
-import { RoleMessageModule } from './role-message/role-message.module';
 import { BotCommandModule } from './bot-command/bot-command.module';
 
 @Module({
@@ -23,9 +22,8 @@ import { BotCommandModule } from './bot-command/bot-command.module';
     PersistenceNaniteModule,
     // Business logic nanite modules
     AdminNaniteModule,
-    ReactionRoleNaniteModule,
+    ReactionRoleColonyModule,
     // Modules with services not yet refactored
-    RoleMessageModule,
     BotCommandModule,
   ],
   controllers: [AppController],

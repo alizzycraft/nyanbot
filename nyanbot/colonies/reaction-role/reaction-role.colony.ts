@@ -6,20 +6,28 @@ import {
   isDiscordMessageReactionRemoveCommand,
   isDiscordSetNicknameCommand,
   DISCORD_NANITE_COMMAND_SET_NICKNAME,
-} from '../discord/discord.interface';
-import { RoleMessageConfig } from '../../role-message/interfaces/role-message.interface';
+  DISCORD_NANITE_COMMAND_SEND_MESSAGE,
+  DiscordMessageReactionAddCommand,
+  DiscordMessageReactionRemoveCommand,
+} from '../../nanites/discord/discord.interface';
+import { RoleMessageConfig } from './interfaces/role-message.interface';
 import {
   MessageReaction,
   PartialMessageReaction,
   User,
   PartialUser,
+  Message,
 } from 'discord.js';
 import { NicknameStateService } from '../../bot-command/nickname-state.service';
-import { RoleMessageStateService } from '../../role-message/role-message-state.service';
+import { RoleMessageStateService } from './role-message-state.service';
+import type { ConfigType } from '@nestjs/config';
+import { channelConfig } from '../../discord/channel.config';
+import { PostedRoleMessage } from './interfaces/role-message.interface';
+import { Command } from '../../swarm/interfaces/command.interface';
 
 @Injectable()
-export class ReactionRoleNanite {
-  private readonly logger = new Logger(ReactionRoleNanite.name);
+export class ReactionRoleColony {
+  private readonly logger = new Logger(ReactionRoleColony.name);
 
   constructor(
     private readonly swarmService: SwarmService,
@@ -27,22 +35,74 @@ export class ReactionRoleNanite {
     private readonly roleMessageStateService: RoleMessageStateService,
     @Inject('ROLE_MESSAGE_CONFIGS')
     private roleMessageConfigs: RoleMessageConfig[],
+    @Inject(channelConfig.KEY)
+    private channels: ConfigType<typeof channelConfig>,
   ) {
-    this.logger.log('ReactionRoleNanite instantiated');
+    this.logger.log('ReactionRoleColony instantiated');
 
     this.swarmService.commandQueue$
       .pipe(filter(isDiscordMessageReactionAddCommand))
-      .subscribe(({ payload }) => {
+      .subscribe((command: DiscordMessageReactionAddCommand) => {
         this.logger.debug('Reaction added');
-        void this.handleAddRole(payload.reaction, payload.user);
+        void this.handleAddRole(command.payload.reaction, command.payload.user);
       });
 
     this.swarmService.commandQueue$
       .pipe(filter(isDiscordMessageReactionRemoveCommand))
-      .subscribe(({ payload }) => {
+      .subscribe((command: DiscordMessageReactionRemoveCommand) => {
         this.logger.debug('Reaction removed');
-        void this.handleRemoveRole(payload.reaction, payload.user);
+        void this.handleRemoveRole(command.payload.reaction, command.payload.user);
       });
+
+    this.swarmService.commandQueue$
+      .pipe(filter((command: Command) => command.type === 'colony:reaction-role:deploy'))
+      .subscribe((command) => {
+        this.logger.debug('Deploy command received');
+        void this.handleDeployCommand(command.payload.guildId);
+      });
+  }
+
+  private async handleDeployCommand(guildId: string) {
+    this.logger.log(`Deploying role messages for guild ${guildId}`);
+
+    this.roleMessageStateService.clearState();
+
+    for (const config of this.roleMessageConfigs) {
+      const channelId = this.channels[config.channel as keyof typeof this.channels];
+      if (!channelId || typeof channelId !== 'string') {
+        this.logger.warn(
+          `Channel key '${config.channel}' not found or is not a single ID in config for message: ${config.id}. Skipping.`,
+        );
+        continue;
+      }
+
+      this.swarmService.dispatch({
+        type: DISCORD_NANITE_COMMAND_SEND_MESSAGE,
+        payload: {
+          channelId: channelId,
+          message: config.content,
+          onSent: (message: Message) => {
+            const posted: PostedRoleMessage = {
+              configId: config.id,
+              guildId: guildId,
+              channelId: channelId,
+              messageId: message.id,
+              postedAt: new Date(),
+            };
+            this.roleMessageStateService.addPostedMessage(posted);
+            for (const reaction of config.reactions) {
+              this.swarmService.dispatch({
+                type: 'discord:addReaction',
+                payload: {
+                  message: message,
+                  emoji: reaction.emoji,
+                },
+              });
+            }
+          },
+        },
+      });
+    }
   }
 
   private async handleAddRole(
