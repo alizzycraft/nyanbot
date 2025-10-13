@@ -7,6 +7,7 @@ export const PERSISTENCE_LOAD_STATE_COMMAND = 'persistence:loadState';
 export interface PersistenceSaveStateCommandPayload<T> {
   key: string;
   data: T;
+  onSave?: () => void;
 }
 export type PersistenceSaveStateCommand<T> = Command<
   PersistenceSaveStateCommandPayload<T>

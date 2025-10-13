@@ -4,6 +4,7 @@ export const roleMessageConfigs: RoleMessageConfig[] = [
   {
     id: 'pronoun-roles',
     channel: 'roles',
+    selectionType: 'single', // Only one pronoun selection allowed
     content:
       'React to have your pronouns added to your nickname. You can only pick one!\n\n' +
       '💙 - He/Him\n' +
@@ -20,6 +21,7 @@ export const roleMessageConfigs: RoleMessageConfig[] = [
   {
     id: 'political-leaning-roles',
     channel: 'roles',
+    selectionType: 'single', // Only one political alignment allowed
     content:
       'Choose a role to identify your general political alignment.\n\n' +
       '🟥 - Left\n' +

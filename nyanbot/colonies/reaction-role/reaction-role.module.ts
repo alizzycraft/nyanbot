@@ -8,7 +8,11 @@ import { ConfigModule } from '@nestjs/config';
 import { channelConfig } from '../../nanites/discord/channel.config';
 
 @Module({
-  imports: [SwarmModule, BotCommandModule, ConfigModule.forFeature(channelConfig)],
+  imports: [
+    SwarmModule,
+    BotCommandModule,
+    ConfigModule.forFeature(channelConfig),
+  ],
   providers: [
     ReactionRoleColony,
     RoleMessageStateService,

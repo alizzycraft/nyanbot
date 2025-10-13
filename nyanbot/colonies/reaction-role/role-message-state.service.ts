@@ -15,15 +15,11 @@ export class RoleMessageStateService implements OnModuleInit {
     );
   }
 
-  addPostedMessage(message: PostedRoleMessage) {
+  async addPostedMessage(message: PostedRoleMessage): Promise<void> {
     // Get current messages
     let currentMessages: Record<string, PostedRoleMessage> = {};
     try {
-      currentMessages =
-        this.swarmService.executeQuery<Record<string, PostedRoleMessage>>(
-          'persistence:getState',
-          'roleMessages',
-        ) || {};
+      currentMessages = (await this.getPostedMessages()) || {};
     } catch {
       // If no state exists, start with empty object
       this.logger.debug(
@@ -38,28 +34,28 @@ export class RoleMessageStateService implements OnModuleInit {
     };
 
     // Save updated state
-    this.swarmService.dispatch({
-      type: 'persistence:saveState',
-      payload: {
-        key: 'roleMessages',
-        data: updatedMessages,
-      },
+    return new Promise((resolve) => {
+      this.swarmService.dispatch({
+        type: 'persistence:saveState',
+        payload: {
+          key: 'roleMessages',
+          data: updatedMessages,
+          onSave: () => {
+            this.logger.debug(
+              `Added posted message: ${message.configId} (ID: ${message.messageId})`,
+            );
+            resolve();
+          },
+        },
+      });
     });
-
-    this.logger.debug(
-      `Added posted message: ${message.configId} (ID: ${message.messageId})`,
-    );
   }
 
-  getPostedMessageByMessageId(
+  async getPostedMessageByMessageId(
     messageId: string,
-  ): PostedRoleMessage | undefined {
+  ): Promise<PostedRoleMessage | undefined> {
     try {
-      const messages =
-        this.swarmService.executeQuery<Record<string, PostedRoleMessage>>(
-          'persistence:getState',
-          'roleMessages',
-        ) || {};
+      const messages = await this.getPostedMessages();
       return messages[messageId];
     } catch (error) {
       this.logger.error(
@@ -68,6 +64,38 @@ export class RoleMessageStateService implements OnModuleInit {
       );
       return undefined;
     }
+  }
+
+  async getPostedMessages(): Promise<Record<string, PostedRoleMessage>> {
+    try {
+      return (
+        (await this.swarmService.executeQuery<
+          Promise<Record<string, PostedRoleMessage>>
+        >('persistence:getState', 'roleMessages')) || {}
+      );
+    } catch (error) {
+      this.logger.error('Failed to get posted messages', error as Error);
+      return {};
+    }
+  }
+
+  async removePostedMessage(messageId: string): Promise<void> {
+    const currentMessages = await this.getPostedMessages();
+    delete currentMessages[messageId];
+
+    return new Promise((resolve) => {
+      this.swarmService.dispatch({
+        type: 'persistence:saveState',
+        payload: {
+          key: 'roleMessages',
+          data: currentMessages,
+          onSave: () => {
+            this.logger.debug(`Removed posted message: ${messageId}`);
+            resolve();
+          },
+        },
+      });
+    });
   }
 
   clearState() {

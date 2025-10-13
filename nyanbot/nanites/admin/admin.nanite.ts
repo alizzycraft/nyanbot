@@ -10,7 +10,6 @@ import { isAdminPostRolesCommand } from './admin.interface';
 import type { ConfigType } from '@nestjs/config';
 import { channelConfig } from '../discord/channel.config';
 import { RoleMessageStateService } from '../../colonies/reaction-role/role-message-state.service';
-import { Guild } from 'discord.js';
 import { DiscordNanite } from '../discord/discord.nanite';
 
 @Injectable()
@@ -113,7 +112,7 @@ export class AdminNanite implements OnModuleInit {
     }
   }
 
-  private async handlePostRolesCommand(guildId: string) {
+  private handlePostRolesCommand(guildId: string) {
     this.logger.log(`Received post-roles command for guild: ${guildId}`);
 
     // TODO: This should be handled by the ReactionRoleColony
@@ -123,7 +122,9 @@ export class AdminNanite implements OnModuleInit {
     this.roleMessageStateService.clearState();
 
     this.logger.log('Dispatching command to colony to post roles');
-    this.swarmService.dispatch({ type: 'colony:reaction-role:deploy', payload: { guildId } });
-
+    this.swarmService.dispatch({
+      type: 'colony:reaction-role:deploy',
+      payload: { guildId },
+    });
   }
 }

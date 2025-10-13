@@ -2,6 +2,7 @@ export interface RoleMessageConfig {
   id: string;
   channel: string;
   content: string;
+  selectionType?: 'single' | 'multiple'; // New property to define selection type
   reactions: {
     emoji: string;
     value: string;

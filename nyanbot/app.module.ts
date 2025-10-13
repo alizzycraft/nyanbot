@@ -8,8 +8,10 @@ import { LoggerNaniteModule } from './nanites/logger/logger.module';
 import { PersistenceNaniteModule } from './nanites/persistence/persistence.module';
 import { AdminNaniteModule } from './nanites/admin/admin.module';
 import { ReactionRoleColonyModule } from './colonies/reaction-role/reaction-role.module';
+import { NicknameManagerModule } from './nanites/nickname-manager/nickname-manager.module';
 // Import the modules that still contain services we haven't refactored yet
 import { BotCommandModule } from './nanites/discord/bot-command.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -23,8 +25,10 @@ import { BotCommandModule } from './nanites/discord/bot-command.module';
     // Business logic nanite modules
     AdminNaniteModule,
     ReactionRoleColonyModule,
+    NicknameManagerModule,
     // Modules with services not yet refactored
     BotCommandModule,
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -14,6 +14,7 @@ export const DISCORD_NANITE_EVENT_MESSAGE_REACTION_REMOVE =
 export interface DiscordSendMessageCommandPayload {
   channelId: string;
   message: string;
+  onSent?: (message: Message) => void;
 }
 export type DiscordSendMessageCommand =
   Command<DiscordSendMessageCommandPayload>;
@@ -59,3 +60,8 @@ export const isDiscordMessageReactionRemoveCommand = (
   command: Command,
 ): command is DiscordMessageReactionRemoveCommand =>
   command.type === DISCORD_NANITE_EVENT_MESSAGE_REACTION_REMOVE;
+
+export interface DiscordReadyEvent {
+  guilds: string[];
+  guildChannels?: Record<string, Record<string, string>>;
+}

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   Client,
   GatewayIntentBits,
+  Message,
   Partials,
   TextChannel,
   MessageReaction,
@@ -105,9 +106,36 @@ export class DiscordNanite implements OnModuleInit {
     this.client.on('shardError', (error) =>
       this.logger.error('A shard encountered an error:', error),
     );
-    this.client.on('clientReady', () =>
-      this.logger.log(`NyanBot logged in as ${this.client.user?.tag}`),
-    );
+    this.client.once('clientReady', async () => {
+      this.logger.log(`NyanBot logged in as ${this.client.user?.tag}`);
+      
+      // Fetch guild and channel information
+      const guilds = this.client.guilds.cache.map((guild) => guild.id);
+      
+      // Try to load guild channel configurations from AceBase
+      const guildChannels: Record<string, Record<string, string>> = {};
+      
+      try {
+        // Request guild channel configurations from the persistence system
+        const savedGuildChannels = await this.swarmService.executeQuery<
+          Promise<Record<string, Record<string, string>>>
+        >('persistence:getState', 'guildChannels');
+        
+        if (savedGuildChannels) {
+          Object.assign(guildChannels, savedGuildChannels);
+          this.logger.log(`Loaded guild channel configurations from database: ${JSON.stringify(guildChannels)}`);
+        } else {
+          this.logger.log('No guild channel configurations found in database');
+        }
+      } catch (error) {
+        this.logger.warn('Failed to load guild channel configurations from database:', error);
+      }
+      
+      this.swarmService.dispatch({
+        type: 'discord:ready',
+        payload: { guilds, guildChannels },
+      });
+    });
 
     // --- Subscribe to Swarm Commands ---
     this.swarmService.commandQueue$
@@ -116,7 +144,11 @@ export class DiscordNanite implements OnModuleInit {
         this.logger.debug(
           `Sending message to channel ${payload.channelId}: ${payload.message}`,
         );
-        void this.sendMessage(payload.channelId, payload.message);
+        void this.sendMessage(
+          payload.channelId,
+          payload.message,
+          payload.onSent,
+        );
       });
 
     this.swarmService.commandQueue$
@@ -131,6 +163,33 @@ export class DiscordNanite implements OnModuleInit {
           payload.nickname,
         );
       });
+
+    this.swarmService.commandQueue$
+      .pipe(filter((command: any) => command.type === 'discord:addReaction'))
+      .subscribe(({ payload }) => {
+        this.logger.debug(
+          `Adding reaction ${payload.emoji} to message ${payload.message.id}`,
+        );
+        void payload.message.react(payload.emoji);
+      });
+
+    this.swarmService.registerQueryHandler(
+      'discord:getMessage',
+      async (payload: { channelId: string; messageId: string }) => {
+        try {
+          const channel = await this.client.channels.fetch(payload.channelId);
+          if (channel?.isTextBased()) {
+            const message = await (channel as TextChannel).messages.fetch(
+              payload.messageId,
+            );
+            return message;
+          }
+        } catch (error) {
+          return null;
+        }
+        return null;
+      },
+    );
 
     await this.client.login(token);
     this.logger.log('DiscordNanite initialized');
@@ -164,11 +223,18 @@ export class DiscordNanite implements OnModuleInit {
     });
   }
 
-  private async sendMessage(channelId: string, message: string): Promise<void> {
+  private async sendMessage(
+    channelId: string,
+    message: string,
+    onSent?: (message: Message) => void,
+  ): Promise<void> {
     try {
       const channel = await this.client.channels.fetch(channelId);
       if (channel?.isTextBased()) {
-        await (channel as TextChannel).send(message);
+        const sentMessage = await (channel as TextChannel).send(message);
+        if (onSent) {
+          onSent(sentMessage);
+        }
       }
     } catch (error) {
       this.logger.error(
@@ -184,8 +250,10 @@ export class DiscordNanite implements OnModuleInit {
     nicknameSuffix: string,
   ): Promise<void> {
     try {
-      this.logger.log(`Attempting to set nickname for user ${userId} in guild ${guildId} with suffix '${nicknameSuffix}'`);
-      
+      this.logger.log(
+        `Attempting to set nickname for user ${userId} in guild ${guildId} with suffix '${nicknameSuffix}'`,
+      );
+
       const guild = await this.client.guilds.fetch(guildId);
       if (!guild) {
         this.logger.error(`Guild not found: ${guildId}`);
@@ -200,15 +268,19 @@ export class DiscordNanite implements OnModuleInit {
 
       // Get the user's base display name
       const baseDisplayName = member.user.displayName;
-      this.logger.log(`Base display name for ${member.user.tag}: '${baseDisplayName}'`);
-      this.logger.log(`Username for ${member.user.tag}: '${member.user.username}'`);
-      this.logger.log(`Current nickname for ${member.user.tag}: '${member.nickname || '(default)'}'`);
+      this.logger.log(
+        `Base display name for ${member.user.tag}: '${baseDisplayName}'`,
+      );
+      this.logger.log(
+        `Username for ${member.user.tag}: '${member.user.username}'`,
+      );
+      this.logger.log(
+        `Current nickname for ${member.user.tag}: '${member.nickname || '(default)'}'`,
+      );
 
       // If suffix is empty, reset to default nickname
       if (!nicknameSuffix) {
-        this.logger.log(
-          `Resetting nickname for ${member.user.tag} to default`,
-        );
+        this.logger.log(`Resetting nickname for ${member.user.tag} to default`);
         // Check if already at default
         if (!member.nickname) {
           this.logger.log(
@@ -220,9 +292,7 @@ export class DiscordNanite implements OnModuleInit {
           `Current nickname: '${member.nickname}', Resetting to default (empty)`,
         );
         await member.setNickname('');
-        this.logger.log(
-          `Reset nickname for ${member.user.tag} to default`,
-        );
+        this.logger.log(`Reset nickname for ${member.user.tag} to default`);
         return;
       }
 
@@ -241,7 +311,9 @@ export class DiscordNanite implements OnModuleInit {
           // If suffix alone is too long, just use part of it
           finalNickname = nicknameSuffix.substring(0, 32);
         }
-        this.logger.log(`Truncated nickname to fit Discord limit: '${finalNickname}'`);
+        this.logger.log(
+          `Truncated nickname to fit Discord limit: '${finalNickname}'`,
+        );
       }
 
       this.logger.log(
@@ -256,7 +328,7 @@ export class DiscordNanite implements OnModuleInit {
         );
         return;
       }
-      
+
       this.logger.log(
         `Current nickname: '${currentNickname}', New nickname: '${finalNickname}'`,
       );
@@ -264,21 +336,18 @@ export class DiscordNanite implements OnModuleInit {
       this.logger.log(
         `Setting nickname for ${member.user.tag} to '${finalNickname}'`,
       );
-      
+
       await member.setNickname(finalNickname);
       this.logger.log(
         `Set nickname for ${member.user.tag} to '${finalNickname}'`,
       );
-
     } catch (error) {
       this.logger.error(
         `Failed to set nickname for user ${userId}`,
         error as Error,
       );
-      this.logger.error(
-        `Error details: ${JSON.stringify(error)}`,
-      );
-      
+      this.logger.error(`Error details: ${JSON.stringify(error)}`);
+
       // Log additional context
       this.logger.error(
         `User: ${userId}, Guild: ${guildId}, Suffix: '${nicknameSuffix}'`,
