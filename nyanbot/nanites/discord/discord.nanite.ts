@@ -30,7 +30,7 @@ export class DiscordNanite implements OnModuleInit {
     private readonly configService: ConfigService,
     private readonly swarmService: SwarmService,
   ) {
-    this.logger.log('DiscordNanite instantiated');
+    this.logger.log(`DiscordNanite instantiated with PID ${process.pid}`);
     this.client = new Client({
       intents: [
         GatewayIntentBits.Guilds,
@@ -62,7 +62,7 @@ export class DiscordNanite implements OnModuleInit {
         return;
       }
       this.logger.log(
-        `Dispatching messageCreate event for message from ${message.author.tag}`,
+        `Dispatching messageCreate event for message from ${message.author.tag} (PID: ${process.pid})`,
       );
       this.swarmService.dispatch({
         type: DISCORD_NANITE_EVENT_MESSAGE_CREATE,
@@ -107,7 +107,7 @@ export class DiscordNanite implements OnModuleInit {
       this.logger.error('A shard encountered an error:', error),
     );
     this.client.once('clientReady', async () => {
-      this.logger.log(`NyanBot logged in as ${this.client.user?.tag}`);
+      this.logger.log(`NyanBot logged in as ${this.client.user?.tag} with PID ${process.pid}`);
       
       // Fetch guild and channel information
       const guilds = this.client.guilds.cache.map((guild) => guild.id);

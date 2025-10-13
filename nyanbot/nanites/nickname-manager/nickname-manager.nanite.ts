@@ -58,14 +58,18 @@ export class NicknameManagerNanite {
         `Current parts for user ${userId}: ${JSON.stringify(currentParts)}`,
       );
       
-      // Merge with new values (undefined means remove)
+      // Merge with new values
       const newParts: NicknameParts = { ...currentParts };
       
-      if (pronoun !== undefined) {
+      // Handle pronoun update/removal
+      if (payload.hasOwnProperty('pronoun')) {
+        // If pronoun property is present (even if undefined), explicitly set it
         newParts.pronoun = pronoun || undefined; // Empty string becomes undefined
       }
       
-      if (politics !== undefined) {
+      // Handle politics update/removal
+      if (payload.hasOwnProperty('politics')) {
+        // If politics property is present (even if undefined), explicitly set it
         newParts.politics = politics || undefined; // Empty string becomes undefined
       }
       

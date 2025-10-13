@@ -49,7 +49,7 @@ export class ReactionRoleColony {
     @Inject(channelConfig.KEY)
     private channels: ConfigType<typeof channelConfig>,
   ) {
-    this.logger.log('ReactionRoleColony instantiated');
+    this.logger.log(`ReactionRoleColony instantiated with PID ${process.pid}`);
 
     this.swarmService.commandQueue$
       .pipe(filter(isDiscordMessageReactionAddCommand))
@@ -71,7 +71,7 @@ export class ReactionRoleColony {
     this.swarmService.commandQueue$
       .pipe(filter((command: Command) => command.type === 'discord:ready'))
       .subscribe(async (command: Command<DiscordReadyEvent>) => {
-        this.logger.log(`Received discord:ready event with ${command.payload.guilds.length} guilds: ${command.payload.guilds.join(', ')}`);
+        this.logger.log(`Received discord:ready event with PID ${process.pid} and ${command.payload.guilds.length} guilds: ${command.payload.guilds.join(', ')}`);
         
         // Store guild channel mappings if provided
         if (command.payload.guildChannels) {
@@ -491,10 +491,17 @@ export class ReactionRoleColony {
                   `Removed political role ${politicalRole.name} from ${user.tag}`,
                 );
               } catch (error) {
-                this.logger.error(
-                  `Failed to remove political role ${politicalRole.name} from ${user.tag}`,
-                  error,
-                );
+                // Check if this is a permission error (code 50013)
+                if (error instanceof Error && 'code' in error && error['code'] === 50013) {
+                  this.logger.debug(
+                    `Missing permissions to remove political role ${politicalRole.name} from ${user.tag} (this may be expected)`,
+                  );
+                } else {
+                  this.logger.error(
+                    `Failed to remove political role ${politicalRole.name} from ${user.tag}`,
+                    error,
+                  );
+                }
               }
             }
           }
@@ -513,17 +520,36 @@ export class ReactionRoleColony {
               // Check if this reaction is in our role mapping
               const otherRoleMapping = roleMessageConfig.reactions.find(r => r.emoji === emoji);
               if (otherRoleMapping) {
-                // Remove the user from this reaction
-                try {
-                  await messageReaction.users.remove(user.id);
-                  this.logger.log(
-                    `Removed user ${user.tag} from reaction ${emoji}`,
-                  );
-                } catch (error) {
-                  this.logger.error(
-                    `Failed to remove user ${user.tag} from reaction ${emoji}`,
-                    error,
-                  );
+                // Check if the user has actually reacted with this emoji
+                // First, fetch the users who reacted with this emoji if needed
+                if (messageReaction.partial) {
+                  await messageReaction.fetch();
+                }
+                
+                // Check if the user is in the list of users who reacted with this emoji
+                const hasUserReacted = messageReaction.users.cache.has(user.id) || 
+                  (await messageReaction.users.fetch()).has(user.id);
+                
+                if (hasUserReacted) {
+                  // Remove the user from this reaction
+                  try {
+                    await messageReaction.users.remove(user.id);
+                    this.logger.log(
+                      `Removed user ${user.tag} from reaction ${emoji}`,
+                    );
+                  } catch (error) {
+                    // Check if this is a permission error (code 50013)
+                    if (error instanceof Error && 'code' in error && error['code'] === 50013) {
+                      this.logger.debug(
+                        `Missing permissions to remove user ${user.tag} from reaction ${emoji} (this is expected in many cases)`,
+                      );
+                    } else {
+                      this.logger.error(
+                        `Failed to remove user ${user.tag} from reaction ${emoji}`,
+                        error,
+                      );
+                    }
+                  }
                 }
               }
             }
@@ -570,13 +596,21 @@ export class ReactionRoleColony {
         await member.roles.add(role.id);
         this.logger.log(`Added role ${role.name} to ${user.tag}`);
       } catch (error) {
-        this.logger.error(
-          `Failed to add role ${role.name} to ${user.tag}`,
-          error,
-        );
-        this.logger.error(`Error details: ${JSON.stringify(error)}`);
+        // Check if this is a permission error (code 50013)
+        if (error instanceof Error && 'code' in error && error['code'] === 50013) {
+          this.logger.debug(
+            `Missing permissions to add role ${role.name} to ${user.tag} (this may be expected)`,
+          );
+        } else {
+          this.logger.error(
+            `Failed to add role ${role.name} to ${user.tag}`,
+            error,
+          );
+          this.logger.error(`Error details: ${JSON.stringify(error)}`);
+        }
       }
     }
+
   }
 
   private async handleUnassignRole(
@@ -652,13 +686,20 @@ export class ReactionRoleColony {
       await member.roles.remove(role.id);
       this.logger.log(`Removed role ${role.name} from ${user.tag}`);
     } catch (error) {
-      this.logger.error(
-        `Failed to remove role ${role.name} from ${user.tag}`,
-        error,
-      );
-      this.logger.error(`Error details: ${JSON.stringify(error)}`);
+      // Check if this is a permission error (code 50013)
+      if (error instanceof Error && 'code' in error && error['code'] === 50013) {
+        this.logger.debug(
+          `Missing permissions to remove role ${role.name} from ${user.tag} (this may be expected)`,
+        );
+      } else {
+        this.logger.error(
+          `Failed to remove role ${role.name} from ${user.tag}`,
+          error,
+        );
+        this.logger.error(`Error details: ${JSON.stringify(error)}`);
+      }
     }
-    
+
     // For single selection role messages, we might want to handle special cases
     if (roleMessageConfig.selectionType === 'single') {
       this.logger.log(
@@ -701,23 +742,12 @@ export class ReactionRoleColony {
       guildId: guild.id,
     };
 
-    // Handle based on selection type
-    if (roleMessageConfig.selectionType === 'single') {
-      // For single selection, directly set the value
-      if (partType === 'pronoun') {
-        payload.pronoun = roleMapping.value;
-      } else {
-        payload.politics = roleMapping.value;
-      }
+    // For single selection, we directly set the value
+    // For multiple selection, we would append (but we're not implementing that yet)
+    if (partType === 'pronoun') {
+      payload.pronoun = roleMapping.value;
     } else {
-      // For multiple selection, we would need to append to existing values
-      // For now, we'll implement the same behavior as single selection
-      // But in the future, this could be extended to support multiple values
-      if (partType === 'pronoun') {
-        payload.pronoun = roleMapping.value;
-      } else {
-        payload.politics = roleMapping.value;
-      }
+      payload.politics = roleMapping.value;
     }
 
     // Dispatch command to update the nickname through the nickname manager
@@ -769,69 +799,69 @@ export class ReactionRoleColony {
       guildId: guild.id,
     };
 
-    // Handle based on selection type and part type
-    if (roleMessageConfig.selectionType === 'single') {
-      // For single selection, we need to check if the current value matches the one being removed
-      if (partType === 'pronoun') {
-        // For pronouns in single selection mode, unconditionally remove
-        payload.pronoun = undefined;
-      } else {
-        // For politics in single selection mode, check if current value matches
-        try {
-          const currentParts = await this.swarmService.executeQuery<NicknameParts | undefined>(
-            'nickname:getParts',
-            { userId: user.id },
-          );
-          
-          // If the current politics value matches the one being removed, set it to undefined
-          // Otherwise, keep the current value
-          if (currentParts?.politics === roleMapping.value) {
-            payload.politics = undefined;
-          } else {
-            payload.politics = currentParts?.politics;
-          }
-        } catch (error) {
-          this.logger.error(
-            `Failed to get current nickname parts for ${user.tag}`,
-            error,
-          );
-          // If we can't get current parts, just remove the politics entirely
-          payload.politics = undefined;
-        }
-      }
-    } else {
-      // For multiple selection (default behavior), we might want different logic
-      // For now, we'll use the same logic as single selection
-      if (partType === 'pronoun') {
-        payload.pronoun = undefined;
-      } else {
-        try {
-          const currentParts = await this.swarmService.executeQuery<NicknameParts | undefined>(
-            'nickname:getParts',
-            { userId: user.id },
-          );
-          
-          // If the current politics value matches the one being removed, set it to undefined
-          // Otherwise, keep the current value
-          if (currentParts?.politics === roleMapping.value) {
-            payload.politics = undefined;
-          } else {
-            payload.politics = currentParts?.politics;
-          }
-        } catch (error) {
-          this.logger.error(
-            `Failed to get current nickname parts for ${user.tag}`,
-            error,
-          );
-          // If we can't get current parts, just remove the politics entirely
-          payload.politics = undefined;
-        }
-      }
-    }
-
-    // Dispatch command to update the nickname through the nickname manager
-    this.logger.log(`Dispatching nickname removal command for user ${user.id}`);
     try {
+      // Get current nickname parts to determine what needs to be removed
+      const currentParts = await this.swarmService.executeQuery<NicknameParts | undefined>(
+        'nickname:getParts',
+        { userId: user.id },
+      );
+      
+      this.logger.log(
+        `Current parts for user ${user.id}: ${JSON.stringify(currentParts)}`,
+      );
+      
+      // Handle based on selection type and part type
+      if (roleMessageConfig.selectionType === 'single') {
+        // For single selection, we need to check if the current value matches the one being removed
+        if (partType === 'pronoun') {
+          // For pronouns in single selection mode, check if current value matches
+          if (currentParts?.pronoun === roleMapping.value) {
+            payload.pronoun = undefined;
+          } else {
+            // If it doesn't match, preserve the current value
+            payload.pronoun = currentParts?.pronoun;
+          }
+        } else {
+          // For politics in single selection mode, check if current value matches
+          if (currentParts?.politics === roleMapping.value) {
+            payload.politics = undefined;
+          } else {
+            // If it doesn't match, preserve the current value
+            payload.politics = currentParts?.politics;
+          }
+        }
+      } else {
+        // For multiple selection (default behavior), we might want different logic
+        // For now, we'll use the same logic as single selection
+        if (partType === 'pronoun') {
+          if (currentParts?.pronoun === roleMapping.value) {
+            payload.pronoun = undefined;
+          } else {
+            payload.pronoun = currentParts?.pronoun;
+          }
+        } else {
+          if (currentParts?.politics === roleMapping.value) {
+            payload.politics = undefined;
+          } else {
+            payload.politics = currentParts?.politics;
+          }
+        }
+      }
+
+      // Only update if we're actually changing something
+      const shouldUpdate = 
+        (partType === 'pronoun' && payload.pronoun !== currentParts?.pronoun) ||
+        (partType === 'politics' && payload.politics !== currentParts?.politics);
+        
+      if (!shouldUpdate) {
+        this.logger.log(
+          `No change needed for ${partType} for user ${user.tag}, current value doesn't match removed value`,
+        );
+        return;
+      }
+
+      // Dispatch command to update the nickname through the nickname manager
+      this.logger.log(`Dispatching nickname removal command for user ${user.id}`);
       await this.swarmService.executeQuery<Promise<void>>(
         'nickname:update',
         payload,

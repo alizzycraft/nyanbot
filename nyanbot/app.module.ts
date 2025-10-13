@@ -11,7 +11,7 @@ import { ReactionRoleColonyModule } from './colonies/reaction-role/reaction-role
 import { NicknameManagerModule } from './nanites/nickname-manager/nickname-manager.module';
 // Import the modules that still contain services we haven't refactored yet
 import { BotCommandModule } from './nanites/discord/bot-command.module';
-import { DatabaseModule } from './database/database.module';
+import { DatabaseNaniteModule } from './nanites/database/database.module';
 
 @Module({
   imports: [
@@ -28,7 +28,7 @@ import { DatabaseModule } from './database/database.module';
     NicknameManagerModule,
     // Modules with services not yet refactored
     BotCommandModule,
-    DatabaseModule,
+    DatabaseNaniteModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -13,3 +13,4 @@ dist
 *.png
 .env
 *.db
+.nyanbot.lock

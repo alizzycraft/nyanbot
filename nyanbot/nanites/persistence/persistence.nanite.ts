@@ -6,7 +6,7 @@ import {
   isPersistenceSaveStateCommand,
   PersistenceSaveStateCommandPayload,
 } from './persistence.interface';
-import { AceBaseService } from '../../database/acebase.service';
+// Removed AceBaseService import
 
 @Injectable()
 export class PersistenceNanite implements OnModuleInit {
@@ -14,7 +14,6 @@ export class PersistenceNanite implements OnModuleInit {
 
   constructor(
     private readonly swarmService: SwarmService,
-    private readonly aceBaseService: AceBaseService,
   ) {}
 
   onModuleInit() {
@@ -23,7 +22,7 @@ export class PersistenceNanite implements OnModuleInit {
       'persistence:getState',
       async (key: string) => {
         this.logger.log(`Query handler called for key '${key}'`);
-        const result = await this.aceBaseService.get(key);
+        const result = await this.swarmService.executeQuery('database:get', key);
         this.logger.log(`Result for key '${key}': ${JSON.stringify(result)}`);
         return result;
       },
@@ -49,7 +48,13 @@ export class PersistenceNanite implements OnModuleInit {
     payload: PersistenceSaveStateCommandPayload<T>,
   ): Promise<void> {
     this.logger.log(`Handling save state command for key '${payload.key}'`);
-    await this.aceBaseService.set(payload.key, payload.data);
+    this.swarmService.dispatch({
+      type: 'database:set',
+      payload: {
+        key: payload.key,
+        value: payload.data,
+      },
+    });
     this.logger.log(
       `Finished handling save state command for key '${payload.key}'`,
     );
@@ -59,8 +64,8 @@ export class PersistenceNanite implements OnModuleInit {
   }
 
   private async handleLoadState(payload: { key: string }): Promise<void> {
-    await this.aceBaseService.get(payload.key);
-    // The state is now managed by AceBase, so we don't need to set it in memory here.
+    await this.swarmService.executeQuery('database:get', payload.key);
+    // The state is now managed by the database nanite, so we don't need to set it in memory here.
     // We might want to emit an event here to notify other parts of the application that the state has been loaded.
   }
 }
