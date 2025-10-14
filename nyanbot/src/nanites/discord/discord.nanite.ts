@@ -18,7 +18,7 @@ import {
   DISCORD_NANITE_EVENT_MESSAGE_REACTION_REMOVE,
   isDiscordSendMessageCommand,
   isDiscordSetNicknameCommand,
-} from './discord.interface';
+} from '@nanorepo/commands/discord.commands';
 import { filter } from 'rxjs';
 
 @Injectable()
@@ -114,6 +114,7 @@ export class DiscordNanite implements OnModuleInit {
       
       // Try to load guild channel configurations from AceBase
       const guildChannels: Record<string, Record<string, string>> = {};
+      let adminChannelId: string | undefined;
       
       try {
         // Request guild channel configurations from the persistence system
@@ -127,13 +128,29 @@ export class DiscordNanite implements OnModuleInit {
         } else {
           this.logger.log('No guild channel configurations found in database');
         }
+        
+        // Load admin channel configuration
+        const savedAdminChannel = await this.swarmService.executeQuery<
+          Promise<string | undefined>
+        >('persistence:getState', 'adminChannel');
+        
+        if (savedAdminChannel) {
+          adminChannelId = savedAdminChannel;
+          this.logger.log(`Loaded admin channel from database: ${adminChannelId}`);
+        } else {
+          this.logger.log('No admin channel configuration found in database');
+        }
       } catch (error) {
-        this.logger.warn('Failed to load guild channel configurations from database:', error);
+        this.logger.warn('Failed to load channel configurations from database:', error);
       }
       
       this.swarmService.dispatch({
         type: 'discord:ready',
-        payload: { guilds, guildChannels },
+        payload: { 
+          guilds, 
+          guildChannels,
+          adminChannelId 
+        },
       });
     });
 

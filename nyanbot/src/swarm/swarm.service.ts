@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Subject } from 'rxjs';
-import { Command } from './interfaces/command.interface';
+import { Command } from '@nanorepo/commands/command.interface';
 
 @Injectable()
 export class SwarmService {

@@ -1,0 +1,68 @@
+import { Command } from './command.interface';
+import { Message, MessageReaction, User } from 'discord.js';
+
+export const DISCORD_NANITE_COMMAND_SEND_MESSAGE = 'discord:sendMessage';
+export const DISCORD_NANITE_COMMAND_SET_NICKNAME = 'discord:setNickname';
+export const DISCORD_NANITE_EVENT_MESSAGE_CREATE = 'discord:messageCreate';
+export const DISCORD_NANITE_EVENT_MESSAGE_REACTION_ADD =
+  'discord:messageReactionAdd';
+export const DISCORD_NANITE_EVENT_MESSAGE_REACTION_REMOVE =
+  'discord:messageReactionRemove';
+
+// --- Commands ---
+
+export interface DiscordSendMessageCommandPayload {
+  channelId: string;
+  message: string;
+  onSent?: (message: Message) => void;
+}
+export type DiscordSendMessageCommand =
+  Command<DiscordSendMessageCommandPayload>;
+export const isDiscordSendMessageCommand = (
+  command: Command,
+): command is DiscordSendMessageCommand =>
+  command.type === DISCORD_NANITE_COMMAND_SEND_MESSAGE;
+
+export interface DiscordSetNicknameCommandPayload {
+  userId: string;
+  guildId: string;
+  nickname: string;
+}
+export type DiscordSetNicknameCommand =
+  Command<DiscordSetNicknameCommandPayload>;
+export const isDiscordSetNicknameCommand = (
+  command: Command,
+): command is DiscordSetNicknameCommand =>
+  command.type === DISCORD_NANITE_COMMAND_SET_NICKNAME;
+
+// --- Events dispatched as commands ---
+
+export type DiscordMessageCreateCommand = Command<Message>;
+export const isDiscordMessageCreateCommand = (
+  command: Command,
+): command is DiscordMessageCreateCommand =>
+  command.type === DISCORD_NANITE_EVENT_MESSAGE_CREATE;
+
+export type DiscordMessageReactionAddCommand = Command<{
+  reaction: MessageReaction;
+  user: User;
+}>;
+export const isDiscordMessageReactionAddCommand = (
+  command: Command,
+): command is DiscordMessageReactionAddCommand =>
+  command.type === DISCORD_NANITE_EVENT_MESSAGE_REACTION_ADD;
+
+export type DiscordMessageReactionRemoveCommand = Command<{
+  reaction: MessageReaction;
+  user: User;
+}>;
+export const isDiscordMessageReactionRemoveCommand = (
+  command: Command,
+): command is DiscordMessageReactionRemoveCommand =>
+  command.type === DISCORD_NANITE_EVENT_MESSAGE_REACTION_REMOVE;
+
+export interface DiscordReadyEvent {
+  guilds: string[];
+  guildChannels?: Record<string, Record<string, string>>;
+  adminChannelId?: string;
+}

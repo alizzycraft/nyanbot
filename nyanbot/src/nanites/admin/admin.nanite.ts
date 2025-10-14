@@ -85,8 +85,9 @@ export class AdminNanite implements OnModuleInit {
     // we would check permissions)
 
     const commandText = message.content.slice('!nyan'.length).trim();
+    const commandParts = commandText.split(' ');
 
-    if (commandText === 'post-roles') {
+    if (commandParts[0] === 'post-roles') {
       this.logger.log(
         `Admin ${message.author.tag} triggered 'post-roles' command.`,
       );
@@ -107,6 +108,65 @@ export class AdminNanite implements OnModuleInit {
           guildId: message.guild?.id || '',
         },
       });
+    } else if (commandParts[0] === 'set-channel' && commandParts.length === 3) {
+      const channelType = commandParts[1];
+      const channelId = commandParts[2];
+      const guildId = message.guild?.id || '';
+
+      this.logger.log(
+        `Admin ${message.author.tag} triggered 'set-channel' command: ${channelType} = ${channelId} for guild ${guildId}`,
+      );
+
+      // Send reply to user
+      this.swarmService.dispatch({
+        type: DISCORD_NANITE_COMMAND_SEND_MESSAGE,
+        payload: {
+          channelId: message.channel.id,
+          message: `Setting ${channelType} channel to ${channelId}...`,
+        },
+      });
+
+      if (channelType === 'admin') {
+        // Special case: setting the admin channel
+        // Save to database
+        this.swarmService.dispatch({
+          type: 'persistence:saveState',
+          payload: {
+            key: 'adminChannel',
+            data: channelId,
+            onSave: () => {
+              this.logger.log(`Saved admin channel configuration: ${channelId}`);
+              // Send success message to the same channel where the command was received
+              this.swarmService.dispatch({
+                type: DISCORD_NANITE_COMMAND_SEND_MESSAGE,
+                payload: {
+                  channelId: message.channel.id,
+                  message: `Successfully set admin channel to <#${channelId}>`,
+                },
+              });
+            },
+          },
+        });
+      } else {
+        // For non-admin channels, dispatch command to set guild channel
+        this.swarmService.dispatch({
+          type: 'colony:reaction-role:setGuildChannel',
+          payload: {
+            guildId,
+            channelType,
+            channelId
+          }
+        });
+        
+        // Send success message
+        this.swarmService.dispatch({
+          type: DISCORD_NANITE_COMMAND_SEND_MESSAGE,
+          payload: {
+            channelId: message.channel.id,
+            message: `Successfully set ${channelType} channel to <#${channelId}>`,
+          },
+        });
+      }
     } else {
       this.logger.debug(`Unknown command: ${commandText}`);
     }

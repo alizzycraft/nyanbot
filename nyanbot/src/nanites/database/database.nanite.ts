@@ -6,6 +6,9 @@ import {
   isDatabaseGetCommand,
   isDatabaseSetCommand,
 } from './database.interface';
+import { join } from 'path';
+// @ts-ignore
+import mkdirp from 'mkdirp';
 
 @Injectable()
 export class DatabaseNanite implements OnModuleInit, OnModuleDestroy {
@@ -13,18 +16,24 @@ export class DatabaseNanite implements OnModuleInit, OnModuleDestroy {
   private isReady = false;
   private readonly logger = new Logger(DatabaseNanite.name);
   private operationCount = 0;
+  private readonly dbPath = '.database';
 
   constructor(private readonly swarmService: SwarmService) {}
 
   async onModuleInit() {
     try {
+      // Ensure the database directory exists before initializing AceBase
+      const fullPath = join(process.cwd(), this.dbPath);
+      await mkdirp(fullPath);
+      this.logger.log(`Ensured database directory exists at: ${fullPath}`);
+
       // Configure AceBase with a consistent name and proper storage settings
       // This will allow data to persist across application restarts
       this.db = new AceBase('nyanbot', {
         storage: { 
           removeVoidProperties: true,
           // Store data in the .database directory relative to the project root
-          path: '.database'
+          path: this.dbPath
         },
         logLevel: 'error' // Reduce logging
       });
@@ -48,6 +57,9 @@ export class DatabaseNanite implements OnModuleInit, OnModuleDestroy {
         .subscribe(async ({ payload }) => {
           try {
             await this.set(payload.key, payload.value);
+            if (payload.onSet) {
+              payload.onSet();
+            }
           } catch (error) {
             this.logger.error(`Error handling database:set command for key '${payload.key}'`, error as Error);
           }

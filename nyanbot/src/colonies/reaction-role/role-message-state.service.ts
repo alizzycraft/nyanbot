@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { SwarmService } from '../../swarm/swarm.service';
-import { PostedRoleMessage } from './interfaces/role-message.interface';
+import { PostedRoleMessage } from '@nanorepo/model/role-message.model';
 
 @Injectable()
 export class RoleMessageStateService implements OnModuleInit {

@@ -1,6 +1,7 @@
 export interface DatabaseSetCommandPayload<T> {
   key: string;
   value: T;
+  onSet?: () => void;
 }
 
 export interface DatabaseGetCommandPayload {

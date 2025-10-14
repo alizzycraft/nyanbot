@@ -1,6 +1,7 @@
 import { registerAs } from '@nestjs/config';
 
 export const channelConfig = registerAs('channels', () => ({
+  // These will be overridden by database values when available
   admin: process.env.ADMIN_CHANNEL_ID,
   roles: process.env.ROLES_CHANNEL_ID,
   // Allow restricting to specific guilds (comma-separated list)

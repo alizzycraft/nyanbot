@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { SwarmService } from '../../swarm/swarm.service';
 import { filter } from 'rxjs/operators';
-import { Command } from '../../swarm/interfaces/command.interface';
+import { Command } from '@nanorepo/commands/command.interface';
 
 export interface LogCommandPayload {
   message: string;

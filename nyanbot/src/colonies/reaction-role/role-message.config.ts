@@ -1,4 +1,4 @@
-import { RoleMessageConfig } from './interfaces/role-message.interface';
+import { RoleMessageConfig } from '@nanorepo/model/role-message.model';
 
 export const roleMessageConfigs: RoleMessageConfig[] = [
   {

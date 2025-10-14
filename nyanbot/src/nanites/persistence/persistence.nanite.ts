@@ -6,7 +6,6 @@ import {
   isPersistenceSaveStateCommand,
   PersistenceSaveStateCommandPayload,
 } from './persistence.interface';
-// Removed AceBaseService import
 
 @Injectable()
 export class PersistenceNanite implements OnModuleInit {
@@ -48,16 +47,22 @@ export class PersistenceNanite implements OnModuleInit {
     payload: PersistenceSaveStateCommandPayload<T>,
   ): Promise<void> {
     this.logger.log(`Handling save state command for key '${payload.key}'`);
-    this.swarmService.dispatch({
-      type: 'database:set',
-      payload: {
-        key: payload.key,
-        value: payload.data,
-      },
+    // Wait for the database operation to complete before calling onSave
+    await new Promise<void>((resolve, reject) => {
+      this.swarmService.dispatch({
+        type: 'database:set',
+        payload: {
+          key: payload.key,
+          value: payload.data,
+          onSet: () => {
+            this.logger.log(
+              `Finished handling save state command for key '${payload.key}'`,
+            );
+            resolve();
+          },
+        },
+      });
     });
-    this.logger.log(
-      `Finished handling save state command for key '${payload.key}'`,
-    );
     if (payload.onSave) {
       payload.onSave();
     }

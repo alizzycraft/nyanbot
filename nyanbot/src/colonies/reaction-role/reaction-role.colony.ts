@@ -8,8 +8,8 @@ import {
   DISCORD_NANITE_COMMAND_SEND_MESSAGE,
   DiscordMessageReactionAddCommand,
   DiscordMessageReactionRemoveCommand,
-} from '../../nanites/discord/discord.interface';
-import { RoleMessageConfig } from './interfaces/role-message.interface';
+} from '@nanorepo/commands/discord.commands';
+import { RoleMessageConfig } from '@nanorepo/model/role-message.model';
 import {
   MessageReaction,
   PartialMessageReaction,
@@ -20,9 +20,9 @@ import {
 import { RoleMessageStateService } from './role-message-state.service';
 import type { ConfigType } from '@nestjs/config';
 import { channelConfig } from '../../nanites/discord/channel.config';
-import { PostedRoleMessage } from './interfaces/role-message.interface';
-import { Command } from '../../swarm/interfaces/command.interface';
-import { DiscordReadyEvent } from '../../nanites/discord/discord.interface';
+import { PostedRoleMessage } from '@nanorepo/model/role-message.model';
+import { Command } from '@nanorepo/commands/command.interface';
+import { DiscordReadyEvent } from '@nanorepo/commands/discord.commands';
 import { NicknameParts, UpdateNicknamePayload } from '../../nanites/nickname-manager/nickname-manager.interface';
 
 // Use a class property instead of a global variable for better control
@@ -111,6 +111,36 @@ export class ReactionRoleColony {
           this.logger.error('Error during role message deployment:', error);
         } finally {
           this.deploymentInProgress = false;
+        }
+      });
+      
+    // Handle set guild channel command
+    this.swarmService.commandQueue$
+      .pipe(filter((command: Command) => command.type === 'colony:reaction-role:setGuildChannel'))
+      .subscribe(async (command: Command<{guildId: string, channelType: string, channelId: string}>) => {
+        this.logger.log(`Received set guild channel command: ${JSON.stringify(command.payload)}`);
+        const { guildId, channelType, channelId } = command.payload;
+        
+        try {
+          await this.setGuildChannel(guildId, channelType, channelId);
+          this.logger.log(`Successfully set guild channel for guild ${guildId}`);
+        } catch (error) {
+          this.logger.error(`Failed to set guild channel for guild ${guildId}`, error);
+        }
+      });
+
+    // Handle deploy command
+    this.swarmService.commandQueue$
+      .pipe(filter((command: Command) => command.type === 'colony:reaction-role:deploy'))
+      .subscribe(async (command: Command<{guildId: string}>) => {
+        this.logger.log(`Received deploy command: ${JSON.stringify(command.payload)}`);
+        const { guildId } = command.payload;
+        
+        try {
+          await this.handleDeployCommand(guildId);
+          this.logger.log(`Successfully deployed role messages for guild ${guildId}`);
+        } catch (error) {
+          this.logger.error(`Failed to deploy role messages for guild ${guildId}`, error);
         }
       });
   }
@@ -893,8 +923,8 @@ export class ReactionRoleColony {
     }
     this.guildChannels[guildId][channelType] = channelId;
     
-    // Save to database
-    return new Promise((resolve) => {
+    // Save to database and wait for completion
+    return new Promise((resolve, reject) => {
       this.swarmService.dispatch({
         type: 'persistence:saveState',
         payload: {

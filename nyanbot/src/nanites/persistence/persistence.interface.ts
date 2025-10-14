@@ -1,4 +1,4 @@
-import { Command } from '../../swarm/interfaces/command.interface';
+import { Command } from '@nanorepo/commands/command.interface';
 
 export const PERSISTENCE_SAVE_STATE_COMMAND = 'persistence:saveState';
 export const PERSISTENCE_LOAD_STATE_COMMAND = 'persistence:loadState';
